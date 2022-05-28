@@ -1,0 +1,4 @@
+certbot_email: youlka2@gmail.com
+certbot_hosts:
+    - hosts
+    - hosts
