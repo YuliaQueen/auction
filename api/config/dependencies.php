@@ -7,7 +7,12 @@ $files = array_merge(
     glob(__DIR__ . (getenv('APP_ENV') ?: 'prod') . '/*.php') ?: []
 );
 
-$configs = array_map(static function ($file) {
+$configs = array_map(static function (string $file): array {
+    /**
+     * @var array
+     * @noinspection PhpIncludedInspection
+     * @psalm-suppress UnresolvableInclude
+     */
     return require $file;
 }, $files);
 

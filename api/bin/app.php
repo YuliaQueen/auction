@@ -12,6 +12,9 @@ $container = require __DIR__ . '/../config/container.php';
 
 $cli = new Application();
 
+/** @var string[] $commands
+ * @psalm-suppress MixedArrayAccess
+ */
 $commands = $container->get('config')['console']['commands'];
 
 foreach ($commands as $command) {
