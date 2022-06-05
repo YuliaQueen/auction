@@ -10,8 +10,4 @@ $container = require __DIR__ . '/../config/container.php';
 
 $app = (require __DIR__ . '/../config/app.php')($container);
 
-$app->addErrorMiddleware($container->get('config')['debug'], true, true);
-
-
-
 $app->run();
