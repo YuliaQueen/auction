@@ -13,9 +13,11 @@
     "require": {
         "php": "^7.4",
         "php-di/php-di": "^6.4",
+        "ramsey/uuid": "^4.2",
         "slim/psr7": "^1.5",
         "slim/slim": "^4.10",
-        "symfony/console": "^5.4"
+        "symfony/console": "^5.4",
+        "webmozart/assert": "^1.11"
     },
     "require-dev": {
         "overtrue/phplint": "^3.0",
