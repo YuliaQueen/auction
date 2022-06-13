@@ -29,12 +29,36 @@ class Token
         return $this->expires;
     }
 
+
+    public function isExpiredTo(DateTimeImmutable $date): bool
+    {
+        return $this->expires <= $date;
+    }
+
     /**
      * @return string
      */
     public function getValue()
     {
         return $this->value;
+    }
+
+    /**
+     * @param $value
+     * @param $date
+     *
+     * @return void
+     */
+    public function validate($value, $date): void
+    {
+
+        if ($this->getValue() !== $value) {
+            throw new \DomainException('Incorrect token');
+        }
+
+        if ($this->getExpires() < $date) {
+            throw new \DomainException('Token already expired');
+        }
     }
 
 }

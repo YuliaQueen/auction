@@ -14,6 +14,7 @@ class User
     private Email $email;
     private string $hash;
     private ?Token $joinConfirmToken;
+    private Status $status;
 
     /**
      * @param Id $id
@@ -29,6 +30,7 @@ class User
         $this->email = $email;
         $this->hash = $hash;
         $this->joinConfirmToken = $token;
+        $this->status = Status::wait();
     }
 
     /**
@@ -69,5 +71,32 @@ class User
     public function getJoinConfirmToken(): ?Token
     {
         return $this->joinConfirmToken;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isWait(): bool
+    {
+        return $this->status->isWait();
+    }
+
+    /**
+     * @return bool
+     */
+    public function isActive(): bool
+    {
+        return $this->status->isActive();
+    }
+
+    public function confirmJoin(string $value, DateTimeImmutable $date): void
+    {
+        if ($this->joinConfirmToken === null) {
+            throw new \DomainException('Confirmation is not required');
+        }
+
+        $this->joinConfirmToken->validate($value, $date);
+        $this->status = Status::active();
+        $this->joinConfirmToken = null;
     }
 }
