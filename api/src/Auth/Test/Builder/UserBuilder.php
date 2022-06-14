@@ -57,13 +57,7 @@ class UserBuilder
      */
     public function build(): User
     {
-        $user =  new User(
-            $this->id,
-            $this->date,
-            $this->email,
-            $this->hash,
-            $this->joinConfirmToken
-        );
+        $user =  User::requestJoinByEmail($this->id, $this->date, $this->email, $this->hash, $this->joinConfirmToken);
         
         if ($this->active) {
             $user->confirmJoin(
