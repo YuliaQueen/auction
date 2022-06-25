@@ -7,19 +7,18 @@ use ArrayObject;
 use DateTimeImmutable;
 use DomainException;
 
-/**
- *
- */
 class User
 {
     private Id $id;
     private DateTimeImmutable $date;
     private Email $email;
+    private ?Email $newEmail = null;
     private ?string $passwordHash = null;
     private ?Token $joinConfirmToken = null;
     private Status $status;
     private ArrayObject $networks;
     private ?Token $passwordResetToken = null;
+    private ?Token $newEmailToken = null;
 
     /**
      * @param Id $id
@@ -102,6 +101,24 @@ class User
     {
         return $this->email;
     }
+
+    /**
+     * @return Email|null
+     */
+    public function getNewEmail(): ?Email
+    {
+        return $this->newEmail;
+    }
+
+    /**
+     * @return Token|null
+     */
+    public function getNewEmailToken(): ?Token
+    {
+        return $this->newEmailToken;
+    }
+
+
 
     /**
      * @return string
@@ -222,5 +239,35 @@ class User
         }
 
         $this->passwordHash = $hasher->hash($new);
+    }
+
+    public function requestEmailChanging($token, $date, $email): void
+    {
+        if (!$this->isActive()) {
+            throw new DomainException('User is not active');
+        }
+
+        if ($this->email->isEqualTo($email)) {
+            throw new DomainException('Email is already same');
+        }
+
+        if ($this->newEmailToken !== null && !$this->newEmailToken->isExpiredTo($date)) {
+            throw new DomainException('Email is already requested');
+        }
+
+        $this->newEmail = $email;
+        $this->newEmailToken = $token;
+    }
+
+    public function confirmEmailChanging(string $token, DateTimeImmutable $date)
+    {
+        if ($this->newEmail === null || $this->newEmailToken === null) {
+            throw new DomainException('Changing is not required');
+        }
+
+        $this->newEmailToken->validate($token, $date);
+        $this->email = $this->newEmail;
+        $this->newEmail = null;
+        $this->newEmailToken = null;
     }
 }
