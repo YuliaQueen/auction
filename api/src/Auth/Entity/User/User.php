@@ -19,6 +19,7 @@ class User
     private ArrayObject $networks;
     private ?Token $passwordResetToken = null;
     private ?Token $newEmailToken = null;
+    private Role $role;
 
     /**
      * @param Id $id
@@ -33,6 +34,7 @@ class User
         $this->email = $email;
         $this->status = $status;
         $this->networks = new ArrayObject();
+        $this->role = Role::user();
     }
 
     /**
@@ -145,6 +147,14 @@ class User
     }
 
     /**
+     * @return Role
+     */
+    public function getRole(): Role
+    {
+        return $this->role;
+    }
+
+    /**
      * @return Token|null
      */
     public function getPasswordResetToken(): ?Token
@@ -176,6 +186,12 @@ class User
         return $this->status->isActive();
     }
 
+    /**
+     * @param string $value
+     * @param DateTimeImmutable $date
+     *
+     * @return void
+     */
     public function confirmJoin(string $value, DateTimeImmutable $date): void
     {
         if ($this->joinConfirmToken === null) {
@@ -204,6 +220,12 @@ class User
         $this->networks->append($identity);
     }
 
+    /**
+     * @param Token $token
+     * @param DateTimeImmutable $date
+     *
+     * @return void
+     */
     public function requestPasswordReset(Token $token, DateTimeImmutable $date): void
     {
         if (!$this->isActive()) {
@@ -217,6 +239,13 @@ class User
         $this->passwordResetToken = $token;
     }
 
+    /**
+     * @param string $token
+     * @param DateTimeImmutable $date
+     * @param string $hash
+     *
+     * @return void
+     */
     public function resetPassword(string $token, DateTimeImmutable $date, string $hash): void
     {
         if ($this->passwordResetToken === null) {
@@ -228,6 +257,13 @@ class User
         $this->passwordHash = $hash;
     }
 
+    /**
+     * @param PasswordHasher $hasher
+     * @param string $current
+     * @param string $new
+     *
+     * @return void
+     */
     public function changePassword(PasswordHasher $hasher, string $current, string $new): void
     {
         if ($this->passwordHash === null) {
@@ -241,6 +277,13 @@ class User
         $this->passwordHash = $hasher->hash($new);
     }
 
+    /**
+     * @param $token
+     * @param $date
+     * @param $email
+     *
+     * @return void
+     */
     public function requestEmailChanging($token, $date, $email): void
     {
         if (!$this->isActive()) {
@@ -259,6 +302,12 @@ class User
         $this->newEmailToken = $token;
     }
 
+    /**
+     * @param string $token
+     * @param DateTimeImmutable $date
+     *
+     * @return void
+     */
     public function confirmEmailChanging(string $token, DateTimeImmutable $date)
     {
         if ($this->newEmail === null || $this->newEmailToken === null) {
@@ -269,5 +318,26 @@ class User
         $this->email = $this->newEmail;
         $this->newEmail = null;
         $this->newEmailToken = null;
+    }
+
+    /**
+     * @param Role $role
+     *
+     * @return void
+     */
+    public function changeRole(Role $role)
+    {
+        if ($this->role->isEqualTo($role)) {
+            throw new DomainException('Role is already same');
+        }
+
+        $this->role = $role;
+    }
+
+    public function remove()
+    {
+        if (!$this->isWait()) {
+            throw new DomainException('Unable to remove active user');
+        }
     }
 }
