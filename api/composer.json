@@ -12,6 +12,8 @@
     },
     "require": {
         "php": "^7.4",
+        "doctrine/orm": "2.7.1.*",
+        "laminas/laminas-config-aggregator": "^1.2",
         "php-di/php-di": "^6.4",
         "ramsey/uuid": "^4.2",
         "slim/psr7": "^1.5",
