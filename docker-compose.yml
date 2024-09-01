@@ -1,0 +1,30 @@
+services:
+    gateway:
+        build:
+            context: gateway/docker/development/nginx
+        ports:
+            - "8082:8082"
+            - "8083:8083"
+        depends_on:
+            - frontend
+            - api
+
+    frontend:
+        build:
+              context: frontend/docker/development/nginx
+        volumes:
+            - ./frontend:/app
+
+    api:
+        build:
+            context: api/docker/development/nginx
+        volumes:
+            - ./api:/app
+        depends_on:
+            - api-php-fpm
+
+    api-php-fpm:
+        build:
+            context: api/docker/development/php-fpm
+        volumes:
+            - ./api:/app
