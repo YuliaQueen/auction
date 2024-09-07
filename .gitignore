@@ -5,3 +5,5 @@
 /gateway/.idea
 
 .idea
+/.env
+.build_number
