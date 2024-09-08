@@ -1,3 +1,6 @@
+include .env
+export
+
 LOGIN := yuliaqueen
 REGISTRY := ghcr.io/$(LOGIN)
 BRANCH_NAME := $(shell git rev-parse --abbrev-ref HEAD)
@@ -31,7 +34,7 @@ increment-build-number:
 	@echo $(NEW_BUILD_NUMBER) > .build_number
 
 build-gateway:
-	docker build --pull --file=gateway/docker/production/nginx/Dockerfile --tag=${REGISTRY}/auction-gateway:${IMAGE_TAG} gateway/docker/production/nginx
+	docker build --pull --file=gateway/docker/production/nginx/Dockerfile --tag=${REGISTRY}/auction-gateway:${IMAGE_TAG} gateway/docker
 
 build-frontend:
 	docker build --pull --file=frontend/docker/production/nginx/Dockerfile --tag=${REGISTRY}/auction-frontend:${IMAGE_TAG} frontend
@@ -53,3 +56,17 @@ try-build:
 
 docker-login:
 	@echo ${GITHUB_PAT} | docker login ${REGISTRY} -u ${LOGIN} --password-stdin
+
+# Deploy to production
+deploy:
+	ssh ${HOST} -p ${PORT} 'rm -rf site_${BUILD_NUMBER}'
+	ssh ${HOST} -p ${PORT} 'mkdir site_${BUILD_NUMBER}'
+	scp -P ${PORT} docker-compose-production.yml ${HOST}:site_${BUILD_NUMBER}/docker-compose-production.yml
+	ssh ${HOST} -p ${PORT} 'cd site_${BUILD_NUMBER} && echo "COMPOSE_PROJECT_NAME=auction" >> .env'
+	ssh ${HOST} -p ${PORT} 'cd site_${BUILD_NUMBER} && echo "REGISTRY=${REGISTRY}" >> .env'
+	ssh ${HOST} -p ${PORT} 'cd site_${BUILD_NUMBER} && echo "IMAGE_TAG=${IMAGE_TAG}" >> .env'
+	ssh ${HOST} -p ${PORT} 'cd site_${BUILD_NUMBER} && docker-compose -f docker-compose-production.yml pull'
+	ssh ${HOST} -p ${PORT} 'cd site_${BUILD_NUMBER} && docker-compose -f docker-compose-production.yml down'
+	ssh ${HOST} -p ${PORT} 'cd site_${BUILD_NUMBER} && docker-compose -f docker-compose-production.yml up -d'
+	ssh ${HOST} -p ${PORT} 'rm -f site'
+	ssh ${HOST} -p ${PORT} 'ln -sr site_${BUILD_NUMBER} site'
