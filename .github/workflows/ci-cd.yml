@@ -33,17 +33,38 @@ jobs:
             IMAGE_TAG="latest"
           fi
           LOWERCASE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          REGISTRY="ghcr.io/${LOWERCASE_REPO}"
-
+          REGISTRY="${{ env.REGISTRY }}/${LOWERCASE_REPO}"
+          
           docker build --pull --file=gateway/docker/production/nginx/Dockerfile --tag=${REGISTRY}/auction-gateway:${IMAGE_TAG} gateway/docker
           docker build --pull --file=frontend/docker/production/nginx/Dockerfile --tag=${REGISTRY}/auction-frontend:${IMAGE_TAG} frontend
           docker build --pull --file=api/docker/production/php-fpm/Dockerfile --tag=${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG} api
           docker build --pull --file=api/docker/production/nginx/Dockerfile --tag=${REGISTRY}/auction-api:${IMAGE_TAG} api
-
+          
           docker push ${REGISTRY}/auction-gateway:${IMAGE_TAG}
           docker push ${REGISTRY}/auction-frontend:${IMAGE_TAG}
           docker push ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG}
           docker push ${REGISTRY}/auction-api:${IMAGE_TAG}
+
+      - name: Check pushed images
+        run: |
+          LOWERCASE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          REGISTRY="${{ env.REGISTRY }}/${LOWERCASE_REPO}"
+          IMAGE_TAG="${GITHUB_REF##*/}-${{ github.run_number }}"
+          if [ "$IMAGE_TAG" = "-${{ github.run_number }}" ]; then
+            IMAGE_TAG="latest"
+          fi
+          
+          echo "Checking for image: ${REGISTRY}/auction-gateway:${IMAGE_TAG}"
+          docker manifest inspect ${REGISTRY}/auction-gateway:${IMAGE_TAG}
+          
+          echo "Checking for image: ${REGISTRY}/auction-frontend:${IMAGE_TAG}"
+          docker manifest inspect ${REGISTRY}/auction-frontend:${IMAGE_TAG}
+          
+          echo "Checking for image: ${REGISTRY}/auction-api:${IMAGE_TAG}"
+          docker manifest inspect ${REGISTRY}/auction-api:${IMAGE_TAG}
+          
+          echo "Checking for image: ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG}"
+          docker manifest inspect ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG}
 
       - name: Deploy to production
         uses: appleboy/ssh-action@master
@@ -56,10 +77,8 @@ jobs:
           port: ${{ secrets.PORT }}
           envs: GH_PAT
           script: |
-            # Аутентификация в ghcr.io
             echo $GH_PAT | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # Проверка статуса аутентификации
             if [ $? -ne 0 ]; then
               echo "Ошибка аутентификации в ghcr.io"
               exit 1
@@ -69,23 +88,22 @@ jobs:
             if [ "$IMAGE_TAG" = "-${{ github.run_number }}" ]; then
               IMAGE_TAG="latest"
             fi
-
+            
             LOWERCASE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
             REGISTRY="ghcr.io/${LOWERCASE_REPO}"
-
+            
             DEPLOY_DIR="/home/deploy/apps/site_${{ github.run_number }}"
             mkdir -p $DEPLOY_DIR
             cd $DEPLOY_DIR
-
+            
             echo "COMPOSE_PROJECT_NAME=auction" > .env
             echo "REGISTRY=${REGISTRY}" >> .env
             echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
-
-            # Вывод переменных окружения для отладки
+            
             echo "Используемые переменные окружения:"
             cat .env
 
-            # Получение docker-compose.yml
+            echo "Получение docker-compose.yml"
             curl -H "Authorization: token $GH_PAT" \
                  -H "Accept: application/vnd.github.v3.raw" \
                  -o docker-compose-production.yml \
@@ -93,6 +111,11 @@ jobs:
 
             echo "Содержимое docker-compose-production.yml:"
             cat docker-compose-production.yml
+
+            echo "Список доступных образов в репозитории:"
+            curl -H "Authorization: token $GH_PAT" \
+                 -H "Accept: application/vnd.github.v3+json" \
+                 "https://api.github.com/user/packages/container/${LOWERCASE_REPO}/versions" | jq '.[].metadata.container.tags'
 
             echo "Проверка доступности образов:"
             docker pull ${REGISTRY}/auction-gateway:${IMAGE_TAG}
