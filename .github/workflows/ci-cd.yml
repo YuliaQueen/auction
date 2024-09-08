@@ -40,21 +40,34 @@ jobs:
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
+          username: deploy
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.PORT }}
           script: |
             IMAGE_TAG="${GITHUB_REF##*/}-${{ github.run_number }}"
             LOWERCASE_IMAGE_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-            rm -rf site_${{ github.run_number }}
-            mkdir site_${{ github.run_number }}
-            cd site_${{ github.run_number }}
+            DEPLOY_DIR="/home/deploy/apps/site_${{ github.run_number }}"
+            mkdir -p $DEPLOY_DIR
+            cd $DEPLOY_DIR
             echo "COMPOSE_PROJECT_NAME=auction" >> .env
             echo "REGISTRY=${{ env.REGISTRY }}/${LOWERCASE_IMAGE_NAME}" >> .env
             echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
-            wget https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose-production.yml
-            docker-compose -f docker-compose-production.yml pull
-            docker-compose -f docker-compose-production.yml down
-            docker-compose -f docker-compose-production.yml up -d
-            rm -f ../site
-            ln -sr . ../site
+            
+            if wget https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose-production.yml; then
+              echo "docker-compose-production.yml успешно скачан"
+            else
+              echo "Ошибка при скачивании docker-compose-production.yml. Проверьте наличие файла в репозитории."
+              exit 1
+            fi
+            
+            if [ -f "docker-compose-production.yml" ]; then
+              docker-compose -f docker-compose-production.yml pull
+              docker-compose -f docker-compose-production.yml down
+              docker-compose -f docker-compose-production.yml up -d
+              cd /home/deploy/apps
+              rm -f site
+              ln -sr $DEPLOY_DIR site
+            else
+              echo "Файл docker-compose-production.yml не найден. Деплой не может быть выполнен."
+              exit 1
+            fi
