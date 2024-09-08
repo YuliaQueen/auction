@@ -33,17 +33,17 @@ jobs:
             IMAGE_TAG="latest"
           fi
           LOWERCASE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          REGISTRY="${{ env.REGISTRY }}/${LOWERCASE_REPO}"
+          REGISTRY="ghcr.io/${LOWERCASE_REPO}"
 
-          docker build --pull --file=gateway/docker/production/nginx/Dockerfile --tag=${REGISTRY}-gateway:${IMAGE_TAG} gateway/docker
-          docker build --pull --file=frontend/docker/production/nginx/Dockerfile --tag=${REGISTRY}-frontend:${IMAGE_TAG} frontend
-          docker build --pull --file=api/docker/production/php-fpm/Dockerfile --tag=${REGISTRY}-api-php-fpm:${IMAGE_TAG} api
-          docker build --pull --file=api/docker/production/nginx/Dockerfile --tag=${REGISTRY}-api:${IMAGE_TAG} api
+          docker build --pull --file=gateway/docker/production/nginx/Dockerfile --tag=${REGISTRY}/auction-gateway:${IMAGE_TAG} gateway/docker
+          docker build --pull --file=frontend/docker/production/nginx/Dockerfile --tag=${REGISTRY}/auction-frontend:${IMAGE_TAG} frontend
+          docker build --pull --file=api/docker/production/php-fpm/Dockerfile --tag=${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG} api
+          docker build --pull --file=api/docker/production/nginx/Dockerfile --tag=${REGISTRY}/auction-api:${IMAGE_TAG} api
 
-          docker push ${REGISTRY}-gateway:${IMAGE_TAG}
-          docker push ${REGISTRY}-frontend:${IMAGE_TAG}
-          docker push ${REGISTRY}-api-php-fpm:${IMAGE_TAG}
-          docker push ${REGISTRY}-api:${IMAGE_TAG}
+          docker push ${REGISTRY}/auction-gateway:${IMAGE_TAG}
+          docker push ${REGISTRY}/auction-frontend:${IMAGE_TAG}
+          docker push ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG}
+          docker push ${REGISTRY}/auction-api:${IMAGE_TAG}
 
       - name: Deploy to production
         uses: appleboy/ssh-action@master
@@ -56,15 +56,22 @@ jobs:
           port: ${{ secrets.PORT }}
           envs: GH_PAT
           script: |
-            # Изменяем формирование IMAGE_TAG
+            # Аутентификация в ghcr.io
+            echo $GH_PAT | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Проверка статуса аутентификации
+            if [ $? -ne 0 ]; then
+              echo "Ошибка аутентификации в ghcr.io"
+              exit 1
+            fi
+
             IMAGE_TAG="${GITHUB_REF##*/}-${{ github.run_number }}"
             if [ "$IMAGE_TAG" = "-${{ github.run_number }}" ]; then
               IMAGE_TAG="latest"
             fi
 
-            # Изменяем формирование REGISTRY
             LOWERCASE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-            REGISTRY="${{ env.REGISTRY }}/${LOWERCASE_REPO}"
+            REGISTRY="ghcr.io/${LOWERCASE_REPO}"
 
             DEPLOY_DIR="/home/deploy/apps/site_${{ github.run_number }}"
             mkdir -p $DEPLOY_DIR
@@ -74,35 +81,31 @@ jobs:
             echo "REGISTRY=${REGISTRY}" >> .env
             echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
 
-            echo "Попытка получить содержимое файла через GitHub API..."
+            # Вывод переменных окружения для отладки
+            echo "Используемые переменные окружения:"
+            cat .env
+
+            # Получение docker-compose.yml
             curl -H "Authorization: token $GH_PAT" \
                  -H "Accept: application/vnd.github.v3.raw" \
                  -o docker-compose-production.yml \
                  -L "https://api.github.com/repos/${{ github.repository }}/contents/docker-compose-production.yml"
 
-            echo "Содержимое файла docker-compose-production.yml:"
+            echo "Содержимое docker-compose-production.yml:"
             cat docker-compose-production.yml
 
-            echo "Содержимое файла .env:"
-            cat .env
-
-            echo "Проверка конфигурации Docker Compose..."
-            docker-compose -f docker-compose-production.yml config
+            echo "Проверка доступности образов:"
+            docker pull ${REGISTRY}/auction-gateway:${IMAGE_TAG}
+            docker pull ${REGISTRY}/auction-frontend:${IMAGE_TAG}
+            docker pull ${REGISTRY}/auction-api:${IMAGE_TAG}
+            docker pull ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG}
 
             if [ $? -eq 0 ]; then
-              echo "Файл docker-compose-production.yml корректен. Продолжаем деплой."
-              echo "Pulling Docker images..."
-              docker-compose -f docker-compose-production.yml pull
-              echo "Stopping old containers..."
-              docker-compose -f docker-compose-production.yml down
-              echo "Starting new containers..."
+              echo "Образы успешно загружены. Продолжаем деплой."
               docker-compose -f docker-compose-production.yml up -d
-              echo "Checking container status..."
+              echo "Проверка статуса контейнеров:"
               docker-compose -f docker-compose-production.yml ps
-              cd /home/deploy/apps
-              rm -f site
-              ln -sr $DEPLOY_DIR site
             else
-              echo "Файл docker-compose-production.yml некорректен. Деплой не может быть выполнен."
+              echo "Не удалось загрузить образы. Проверьте права доступа и наличие образов в репозитории."
               exit 1
             fi
