@@ -11,6 +11,9 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout repository
@@ -38,6 +41,8 @@ jobs:
 
       - name: Deploy to production
         uses: appleboy/ssh-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.HOST }}
           username: deploy
@@ -53,14 +58,22 @@ jobs:
             echo "REGISTRY=${{ env.REGISTRY }}/${LOWERCASE_IMAGE_NAME}" >> .env
             echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
 
-            if wget https://raw.githubusercontent.com/${{ github.repository }}/master/docker-compose-production.yml; then
-              echo "docker-compose-production.yml успешно скачан"
+            echo "Текущая директория: $(pwd)"
+            echo "Содержимое текущей директории:"
+            ls -la
+
+            echo "Попытка получить содержимое файла через GitHub API..."
+            if curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.v3.raw" -o docker-compose-production.yml -L https://api.github.com/repos/${{ github.repository }}/contents/docker-compose-production.yml; then
+              echo "docker-compose-production.yml успешно получен"
+              cat docker-compose-production.yml
             else
-              echo "Ошибка при скачивании docker-compose-production.yml. Проверьте наличие файла в репозитории."
+              echo "Ошибка при получении docker-compose-production.yml. Проверьте наличие файла в репозитории и права доступа."
+              echo "Статус выполнения curl: $?"
               exit 1
             fi
 
             if [ -f "docker-compose-production.yml" ]; then
+              echo "Файл docker-compose-production.yml найден. Продолжаем деплой."
               docker-compose -f docker-compose-production.yml pull
               docker-compose -f docker-compose-production.yml down
               docker-compose -f docker-compose-production.yml up -d
