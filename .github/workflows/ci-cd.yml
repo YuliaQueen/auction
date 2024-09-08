@@ -26,14 +26,15 @@ jobs:
       - name: Build and push Docker images
         run: |
           IMAGE_TAG="${GITHUB_REF##*/}-${{ github.run_number }}"
-          docker build --pull --file=gateway/docker/production/nginx/Dockerfile --tag=${REGISTRY}/${IMAGE_NAME}-gateway:${IMAGE_TAG} gateway/docker
-          docker build --pull --file=frontend/docker/production/nginx/Dockerfile --tag=${REGISTRY}/${IMAGE_NAME}-frontend:${IMAGE_TAG} frontend
-          docker build --pull --file=api/docker/production/php-fpm/Dockerfile --tag=${REGISTRY}/${IMAGE_NAME}-api-php-fpm:${IMAGE_TAG} api
-          docker build --pull --file=api/docker/production/nginx/Dockerfile --tag=${REGISTRY}/${IMAGE_NAME}-api:${IMAGE_TAG} api
-          docker push ${REGISTRY}/${IMAGE_NAME}-gateway:${IMAGE_TAG}
-          docker push ${REGISTRY}/${IMAGE_NAME}-frontend:${IMAGE_TAG}
-          docker push ${REGISTRY}/${IMAGE_NAME}-api-php-fpm:${IMAGE_TAG}
-          docker push ${REGISTRY}/${IMAGE_NAME}-api:${IMAGE_TAG}
+          LOWERCASE_IMAGE_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          docker build --pull --file=gateway/docker/production/nginx/Dockerfile --tag=${REGISTRY}/${LOWERCASE_IMAGE_NAME}-gateway:${IMAGE_TAG} gateway/docker
+          docker build --pull --file=frontend/docker/production/nginx/Dockerfile --tag=${REGISTRY}/${LOWERCASE_IMAGE_NAME}-frontend:${IMAGE_TAG} frontend
+          docker build --pull --file=api/docker/production/php-fpm/Dockerfile --tag=${REGISTRY}/${LOWERCASE_IMAGE_NAME}-api-php-fpm:${IMAGE_TAG} api
+          docker build --pull --file=api/docker/production/nginx/Dockerfile --tag=${REGISTRY}/${LOWERCASE_IMAGE_NAME}-api:${IMAGE_TAG} api
+          docker push ${REGISTRY}/${LOWERCASE_IMAGE_NAME}-gateway:${IMAGE_TAG}
+          docker push ${REGISTRY}/${LOWERCASE_IMAGE_NAME}-frontend:${IMAGE_TAG}
+          docker push ${REGISTRY}/${LOWERCASE_IMAGE_NAME}-api-php-fpm:${IMAGE_TAG}
+          docker push ${REGISTRY}/${LOWERCASE_IMAGE_NAME}-api:${IMAGE_TAG}
 
       - name: Deploy to production
         uses: appleboy/ssh-action@master
@@ -44,11 +45,12 @@ jobs:
           port: ${{ secrets.PORT }}
           script: |
             IMAGE_TAG="${GITHUB_REF##*/}-${{ github.run_number }}"
+            LOWERCASE_IMAGE_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
             rm -rf site_${{ github.run_number }}
             mkdir site_${{ github.run_number }}
             cd site_${{ github.run_number }}
             echo "COMPOSE_PROJECT_NAME=auction" >> .env
-            echo "REGISTRY=${{ env.REGISTRY }}/${{ github.repository }}" >> .env
+            echo "REGISTRY=${{ env.REGISTRY }}/${LOWERCASE_IMAGE_NAME}" >> .env
             echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
             wget https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose-production.yml
             docker-compose -f docker-compose-production.yml pull
