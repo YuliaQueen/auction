@@ -78,6 +78,20 @@ jobs:
             echo "Используемые переменные окружения:"
             cat .env
 
+            echo "Получение docker-compose.yml"
+            curl -H "Authorization: token $GH_PAT" \
+                 -H "Accept: application/vnd.github.v3.raw" \
+                 -o docker-compose-production.yml \
+                 -L "https://api.github.com/repos/${{ github.repository }}/contents/docker-compose-production.yml"
+
+            echo "Содержимое docker-compose-production.yml:"
+            cat docker-compose-production.yml
+
+            echo "Список доступных образов в репозитории:"
+            curl -s -H "Authorization: token $GH_PAT" \
+                 -H "Accept: application/vnd.github.v3+json" \
+                 "https://api.github.com/user/packages/container/${LOWERCASE_REPO}/versions" | sed 's/,/,\n/g'
+
             echo "Проверка доступности образов:"
             docker pull ${REGISTRY}/auction-gateway:${IMAGE_TAG} || echo "Не удалось загрузить auction-gateway:${IMAGE_TAG}"
             docker pull ${REGISTRY}/auction-frontend:${IMAGE_TAG} || echo "Не удалось загрузить auction-frontend:${IMAGE_TAG}"
