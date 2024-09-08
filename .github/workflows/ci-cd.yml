@@ -29,20 +29,21 @@ jobs:
       - name: Build and push Docker images
         run: |
           IMAGE_TAG="${GITHUB_REF##*/}-${{ github.run_number }}"
-          if [ -z "$IMAGE_TAG" ]; then
+          if [ "$IMAGE_TAG" = "-${{ github.run_number }}" ]; then
             IMAGE_TAG="latest"
           fi
-          LOWERCASE_IMAGE_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          
-          docker build --pull --file=gateway/docker/production/nginx/Dockerfile --tag=${REGISTRY}/${LOWERCASE_IMAGE_NAME}-gateway:${IMAGE_TAG} gateway/docker
-          docker build --pull --file=frontend/docker/production/nginx/Dockerfile --tag=${REGISTRY}/${LOWERCASE_IMAGE_NAME}-frontend:${IMAGE_TAG} frontend
-          docker build --pull --file=api/docker/production/php-fpm/Dockerfile --tag=${REGISTRY}/${LOWERCASE_IMAGE_NAME}-api-php-fpm:${IMAGE_TAG} api
-          docker build --pull --file=api/docker/production/nginx/Dockerfile --tag=${REGISTRY}/${LOWERCASE_IMAGE_NAME}-api:${IMAGE_TAG} api
-          
-          docker push ${REGISTRY}/${LOWERCASE_IMAGE_NAME}-gateway:${IMAGE_TAG}
-          docker push ${REGISTRY}/${LOWERCASE_IMAGE_NAME}-frontend:${IMAGE_TAG}
-          docker push ${REGISTRY}/${LOWERCASE_IMAGE_NAME}-api-php-fpm:${IMAGE_TAG}
-          docker push ${REGISTRY}/${LOWERCASE_IMAGE_NAME}-api:${IMAGE_TAG}
+          LOWERCASE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          REGISTRY="${{ env.REGISTRY }}/${LOWERCASE_REPO}"
+
+          docker build --pull --file=gateway/docker/production/nginx/Dockerfile --tag=${REGISTRY}-gateway:${IMAGE_TAG} gateway/docker
+          docker build --pull --file=frontend/docker/production/nginx/Dockerfile --tag=${REGISTRY}-frontend:${IMAGE_TAG} frontend
+          docker build --pull --file=api/docker/production/php-fpm/Dockerfile --tag=${REGISTRY}-api-php-fpm:${IMAGE_TAG} api
+          docker build --pull --file=api/docker/production/nginx/Dockerfile --tag=${REGISTRY}-api:${IMAGE_TAG} api
+
+          docker push ${REGISTRY}-gateway:${IMAGE_TAG}
+          docker push ${REGISTRY}-frontend:${IMAGE_TAG}
+          docker push ${REGISTRY}-api-php-fpm:${IMAGE_TAG}
+          docker push ${REGISTRY}-api:${IMAGE_TAG}
 
       - name: Deploy to production
         uses: appleboy/ssh-action@master
@@ -55,53 +56,53 @@ jobs:
           port: ${{ secrets.PORT }}
           envs: GH_PAT
           script: |
+            # Изменяем формирование IMAGE_TAG
             IMAGE_TAG="${GITHUB_REF##*/}-${{ github.run_number }}"
-            if [ -z "$IMAGE_TAG" ]; then
+            if [ "$IMAGE_TAG" = "-${{ github.run_number }}" ]; then
               IMAGE_TAG="latest"
             fi
-            LOWERCASE_IMAGE_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+
+            # Изменяем формирование REGISTRY
+            LOWERCASE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            REGISTRY="${{ env.REGISTRY }}/${LOWERCASE_REPO}"
+
             DEPLOY_DIR="/home/deploy/apps/site_${{ github.run_number }}"
             mkdir -p $DEPLOY_DIR
             cd $DEPLOY_DIR
-            echo "COMPOSE_PROJECT_NAME=auction" >> .env
-            echo "REGISTRY=${{ env.REGISTRY }}/${LOWERCASE_IMAGE_NAME}" >> .env
+
+            echo "COMPOSE_PROJECT_NAME=auction" > .env
+            echo "REGISTRY=${REGISTRY}" >> .env
             echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
-            
+
             echo "Попытка получить содержимое файла через GitHub API..."
             curl -H "Authorization: token $GH_PAT" \
                  -H "Accept: application/vnd.github.v3.raw" \
                  -o docker-compose-production.yml \
                  -L "https://api.github.com/repos/${{ github.repository }}/contents/docker-compose-production.yml"
-            
-            if [ $? -eq 0 ] && [ -s docker-compose-production.yml ]; then
-              echo "docker-compose-production.yml успешно получен"
-              echo "Содержимое файла docker-compose-production.yml:"
-              cat docker-compose-production.yml
-            else
-              echo "Ошибка при получении docker-compose-production.yml. Проверьте наличие файла в репозитории и права доступа."
-              echo "Содержимое полученного файла:"
-              cat docker-compose-production.yml
-              echo "Статус выполнения curl: $?"
-              curl -I -H "Authorization: token $GH_PAT" \
-                   -H "Accept: application/vnd.github.v3.raw" \
-                   "https://api.github.com/repos/${{ github.repository }}/contents/docker-compose-production.yml"
-              exit 1
-            fi
-            
-            if docker-compose -f docker-compose-production.yml config > /dev/null 2>&1; then
+
+            echo "Содержимое файла docker-compose-production.yml:"
+            cat docker-compose-production.yml
+
+            echo "Содержимое файла .env:"
+            cat .env
+
+            echo "Проверка конфигурации Docker Compose..."
+            docker-compose -f docker-compose-production.yml config
+
+            if [ $? -eq 0 ]; then
               echo "Файл docker-compose-production.yml корректен. Продолжаем деплой."
-              echo "Используемые переменные окружения:"
-              echo "REGISTRY=${{ env.REGISTRY }}/${LOWERCASE_IMAGE_NAME}"
-              echo "IMAGE_TAG=${IMAGE_TAG}"
+              echo "Pulling Docker images..."
               docker-compose -f docker-compose-production.yml pull
+              echo "Stopping old containers..."
               docker-compose -f docker-compose-production.yml down
+              echo "Starting new containers..."
               docker-compose -f docker-compose-production.yml up -d
+              echo "Checking container status..."
+              docker-compose -f docker-compose-production.yml ps
               cd /home/deploy/apps
               rm -f site
               ln -sr $DEPLOY_DIR site
             else
               echo "Файл docker-compose-production.yml некорректен. Деплой не может быть выполнен."
-              echo "Содержимое файла docker-compose-production.yml:"
-              cat docker-compose-production.yml
               exit 1
             fi
