@@ -28,10 +28,7 @@ jobs:
 
       - name: Build and push Docker images
         run: |
-          IMAGE_TAG="${GITHUB_REF##*/}-${{ github.run_number }}"
-          if [ "$IMAGE_TAG" = "-${{ github.run_number }}" ]; then
-            IMAGE_TAG="latest"
-          fi
+          IMAGE_TAG="master-${{ github.run_number }}"
           LOWERCASE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           REGISTRY="${{ env.REGISTRY }}/${LOWERCASE_REPO}"
           
@@ -66,11 +63,7 @@ jobs:
               exit 1
             fi
 
-            IMAGE_TAG="${GITHUB_REF##*/}-${{ github.run_number }}"
-            if [ "$IMAGE_TAG" = "-${{ github.run_number }}" ]; then
-              IMAGE_TAG="latest"
-            fi
-            
+            IMAGE_TAG="master-${{ github.run_number }}"
             LOWERCASE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
             REGISTRY="ghcr.io/${LOWERCASE_REPO}"
             
@@ -97,7 +90,7 @@ jobs:
             echo "Список доступных образов в репозитории:"
             curl -s -H "Authorization: token $GH_PAT" \
                  -H "Accept: application/vnd.github.v3+json" \
-                 "https://api.github.com/user/packages/container/${LOWERCASE_REPO}/versions" | grep -o '"tags":\[[^]]*\]'
+                 "https://api.github.com/user/packages/container/${LOWERCASE_REPO}/versions" | sed 's/,/,\n/g'
 
             echo "Проверка доступности образов:"
             docker pull ${REGISTRY}/auction-gateway:${IMAGE_TAG} || echo "Не удалось загрузить auction-gateway:${IMAGE_TAG}"
