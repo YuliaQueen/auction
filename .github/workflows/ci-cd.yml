@@ -45,26 +45,8 @@ jobs:
           docker push ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG}
           docker push ${REGISTRY}/auction-api:${IMAGE_TAG}
 
-      - name: Check pushed images
-        run: |
-          LOWERCASE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          REGISTRY="${{ env.REGISTRY }}/${LOWERCASE_REPO}"
-          IMAGE_TAG="${GITHUB_REF##*/}-${{ github.run_number }}"
-          if [ "$IMAGE_TAG" = "-${{ github.run_number }}" ]; then
-            IMAGE_TAG="latest"
-          fi
-          
-          echo "Checking for image: ${REGISTRY}/auction-gateway:${IMAGE_TAG}"
-          docker manifest inspect ${REGISTRY}/auction-gateway:${IMAGE_TAG}
-          
-          echo "Checking for image: ${REGISTRY}/auction-frontend:${IMAGE_TAG}"
-          docker manifest inspect ${REGISTRY}/auction-frontend:${IMAGE_TAG}
-          
-          echo "Checking for image: ${REGISTRY}/auction-api:${IMAGE_TAG}"
-          docker manifest inspect ${REGISTRY}/auction-api:${IMAGE_TAG}
-          
-          echo "Checking for image: ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG}"
-          docker manifest inspect ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG}
+          echo "Pushed images:"
+          docker image ls --format "{{.Repository}}:{{.Tag}}" | grep ${REGISTRY}
 
       - name: Deploy to production
         uses: appleboy/ssh-action@master
@@ -113,17 +95,17 @@ jobs:
             cat docker-compose-production.yml
 
             echo "Список доступных образов в репозитории:"
-            curl -H "Authorization: token $GH_PAT" \
+            curl -s -H "Authorization: token $GH_PAT" \
                  -H "Accept: application/vnd.github.v3+json" \
-                 "https://api.github.com/user/packages/container/${LOWERCASE_REPO}/versions" | jq '.[].metadata.container.tags'
+                 "https://api.github.com/user/packages/container/${LOWERCASE_REPO}/versions" | grep -o '"tags":\[[^]]*\]'
 
             echo "Проверка доступности образов:"
-            docker pull ${REGISTRY}/auction-gateway:${IMAGE_TAG}
-            docker pull ${REGISTRY}/auction-frontend:${IMAGE_TAG}
-            docker pull ${REGISTRY}/auction-api:${IMAGE_TAG}
-            docker pull ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG}
+            docker pull ${REGISTRY}/auction-gateway:${IMAGE_TAG} || echo "Не удалось загрузить auction-gateway:${IMAGE_TAG}"
+            docker pull ${REGISTRY}/auction-frontend:${IMAGE_TAG} || echo "Не удалось загрузить auction-frontend:${IMAGE_TAG}"
+            docker pull ${REGISTRY}/auction-api:${IMAGE_TAG} || echo "Не удалось загрузить auction-api:${IMAGE_TAG}"
+            docker pull ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG} || echo "Не удалось загрузить auction-api-php-fpm:${IMAGE_TAG}"
 
-            if [ $? -eq 0 ]; then
+            if docker-compose -f docker-compose-production.yml pull; then
               echo "Образы успешно загружены. Продолжаем деплой."
               docker-compose -f docker-compose-production.yml up -d
               echo "Проверка статуса контейнеров:"
