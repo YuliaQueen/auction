@@ -58,22 +58,25 @@ jobs:
             echo "REGISTRY=${{ env.REGISTRY }}/${LOWERCASE_IMAGE_NAME}" >> .env
             echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
 
-            echo "Текущая директория: $(pwd)"
-            echo "Содержимое текущей директории:"
-            ls -la
-
             echo "Попытка получить содержимое файла через GitHub API..."
-            if curl -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.v3.raw" -o docker-compose-production.yml -L https://api.github.com/repos/${{ github.repository }}/contents/docker-compose-production.yml; then
+            curl -H "Authorization: token $GITHUB_TOKEN" \
+                 -H "Accept: application/vnd.github.v3.raw" \
+                 -o docker-compose-production.yml \
+                 -L "https://api.github.com/repos/${{ github.repository }}/contents/docker-compose-production.yml"
+
+            if [ $? -eq 0 ] && [ -s docker-compose-production.yml ]; then
               echo "docker-compose-production.yml успешно получен"
               cat docker-compose-production.yml
             else
               echo "Ошибка при получении docker-compose-production.yml. Проверьте наличие файла в репозитории и права доступа."
+              echo "Содержимое полученного файла:"
+              cat docker-compose-production.yml
               echo "Статус выполнения curl: $?"
               exit 1
             fi
 
-            if [ -f "docker-compose-production.yml" ]; then
-              echo "Файл docker-compose-production.yml найден. Продолжаем деплой."
+            if docker-compose -f docker-compose-production.yml config > /dev/null 2>&1; then
+              echo "Файл docker-compose-production.yml корректен. Продолжаем деплой."
               docker-compose -f docker-compose-production.yml pull
               docker-compose -f docker-compose-production.yml down
               docker-compose -f docker-compose-production.yml up -d
@@ -81,6 +84,8 @@ jobs:
               rm -f site
               ln -sr $DEPLOY_DIR site
             else
-              echo "Файл docker-compose-production.yml не найден. Деплой не может быть выполнен."
+              echo "Файл docker-compose-production.yml некорректен. Деплой не может быть выполнен."
+              echo "Содержимое файла docker-compose-production.yml:"
+              cat docker-compose-production.yml
               exit 1
             fi
