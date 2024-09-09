@@ -20,6 +20,10 @@
         "ext-json": "*",
         "php-di/php-di": "^7.0",
         "slim/psr7": "^1.7",
-        "slim/slim": "^4.14"
+        "slim/slim": "^4.14",
+        "symfony/console": "^7.1"
+    },
+    "scripts": {
+        "app": "php bin/app.php --ansi"
     }
 }
