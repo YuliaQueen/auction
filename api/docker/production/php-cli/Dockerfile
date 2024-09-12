@@ -1,4 +1,4 @@
-FROM php:8.3-sli-alpine AS builder
+FROM php:8.3-cli-alpine as builder
 
 RUN apk add unzip
 
@@ -14,9 +14,9 @@ COPY ./composer.json ./composer.lock ./
 RUN composer install --no-dev --prefer-dist --no-progress --no-suggest --optimize-autoloader \
     && rm -rf /root/.composer/cache
 
-### FPM ###
+### CLI ###
 
-FROM php:8.3-fpm-alpine
+FROM php:8.3-cli-alpine
 
 RUN docker-php-ext-install opcache
 
