@@ -1,4 +1,4 @@
-FROM php:8.3-cli-alpine as builder
+FROM php:8.3-cli-alpine AS builder
 
 RUN apk add unzip
 
