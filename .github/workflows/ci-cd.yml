@@ -36,11 +36,13 @@ jobs:
           docker build --pull --file=frontend/docker/production/nginx/Dockerfile --tag=${REGISTRY}/auction-frontend:${IMAGE_TAG} frontend
           docker build --pull --file=api/docker/production/php-fpm/Dockerfile --tag=${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG} api
           docker build --pull --file=api/docker/production/nginx/Dockerfile --tag=${REGISTRY}/auction-api:${IMAGE_TAG} api
+          docker build --pull --file=api/docker/production/php-cli/Dockerfile --tag=${REGISTRY}/auction-api-php-cli:${IMAGE_TAG} api
           
           docker push ${REGISTRY}/auction-gateway:${IMAGE_TAG}
           docker push ${REGISTRY}/auction-frontend:${IMAGE_TAG}
           docker push ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG}
           docker push ${REGISTRY}/auction-api:${IMAGE_TAG}
+          docker push ${REGISTRY}/auction-api-php-cli:${IMAGE_TAG}
 
           echo "Pushed images:"
           docker image ls --format "{{.Repository}}:{{.Tag}}" | grep ${REGISTRY}
@@ -97,6 +99,7 @@ jobs:
             docker pull ${REGISTRY}/auction-frontend:${IMAGE_TAG} || echo "Не удалось загрузить auction-frontend:${IMAGE_TAG}"
             docker pull ${REGISTRY}/auction-api:${IMAGE_TAG} || echo "Не удалось загрузить auction-api:${IMAGE_TAG}"
             docker pull ${REGISTRY}/auction-api-php-fpm:${IMAGE_TAG} || echo "Не удалось загрузить auction-api-php-fpm:${IMAGE_TAG}"
+            docker pull ${REGISTRY}/auction-api-php-cli:${IMAGE_TAG} || echo "Не удалось загрузить auction-api-php-cli:${IMAGE_TAG}"
 
             if docker-compose -f docker-compose-production.yml pull; then
               echo "Образы успешно загружены. Продолжаем деплой."
