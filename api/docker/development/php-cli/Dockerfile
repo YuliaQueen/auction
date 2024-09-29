@@ -7,6 +7,9 @@ RUN apk add --no-cache autoconf g++ make linux-headers \
 
 RUN apk add --no-cache unzip
 
+# Активация OPcache
+RUN docker-php-ext-enable opcache
+
 RUN mv $PHP_INI_DIR/php.ini-development $PHP_INI_DIR/php.ini
 
 COPY ./common/php/conf.d /usr/local/etc/php/conf.d
