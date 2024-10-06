@@ -8,3 +8,4 @@
 /.env
 .build_number
 /api/vendor/
+/.phpunit.result.cache

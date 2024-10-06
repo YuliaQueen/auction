@@ -15,6 +15,11 @@
             "App\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Test\\": "tests/"
+        }
+    },
     "require": {
         "php": "^8.3",
         "ext-json": "*",
@@ -26,10 +31,12 @@
     "scripts": {
         "app": "php bin/app.php --ansi",
         "lint": "phplint",
-        "psalm": "./vendor/bin/psalm"
+        "psalm": "./vendor/bin/psalm",
+        "test": "phpunit --colors=always"
     },
     "require-dev": {
         "overtrue/phplint": "^9.4",
+        "phpunit/phpunit": "^10.0",
         "vimeo/psalm": "^5.26"
     }
 }
