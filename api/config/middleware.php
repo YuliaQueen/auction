@@ -9,5 +9,6 @@ return static function (App $app, ContainerInterface $container) {
      * @var bool $isDebug
      */
     $isDebug = $container->get('config')['debug'];
-    $app->addErrorMiddleware($isDebug, true, true);
+    $isLogEnabled = $container->get('config')['env'] != 'test';
+    $app->addErrorMiddleware($isDebug, $isLogEnabled, true);
 };

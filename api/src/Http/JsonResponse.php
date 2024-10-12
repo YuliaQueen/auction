@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace App\Http;
 
 use JsonException;
 use Slim\Psr7\Headers;
@@ -9,7 +9,6 @@ use Slim\Psr7\Factory\StreamFactory;
 
 class JsonResponse extends Response
 {
-
     /**
      * @param mixed $data
      * @param int   $status
