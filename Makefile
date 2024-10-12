@@ -33,3 +33,15 @@ api-psalm:
 
 api-test:
 	docker-compose run --rm api-php-cli composer test
+
+api-test-unit:
+	docker-compose run --rm api-php-cli composer test -- --testsuite=unit
+
+api-test-unit-coverage:
+	docker-compose run --rm api-php-cli composer test-coverage -- --testsuite=unit
+
+api-test-functional:
+	docker-compose run --rm api-php-cli composer test -- --testsuite=functional
+
+api-test-functional-coverage:
+	docker-compose run --rm api-php-cli composer test-coverage -- --testsuite=functional

@@ -32,7 +32,8 @@
         "app": "php bin/app.php --ansi",
         "lint": "phplint",
         "psalm": "./vendor/bin/psalm",
-        "test": "phpunit --colors=always"
+        "test": "phpunit --colors=always",
+        "test-coverage": "phpunit --colors=always --coverage-html var/coverage"
     },
     "require-dev": {
         "overtrue/phplint": "^9.4",
