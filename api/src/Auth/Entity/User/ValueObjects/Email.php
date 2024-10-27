@@ -3,6 +3,7 @@
 namespace App\Auth\Entity\User\ValueObjects;
 
 use InvalidArgumentException;
+use Webmozart\Assert\Assert;
 
 readonly class Email
 {
@@ -10,13 +11,8 @@ readonly class Email
         private string $value
     )
     {
-        if (empty($this->value)) {
-            throw new InvalidArgumentException('Email cannot be empty');
-        }
-
-        if (!filter_var($this->value, FILTER_VALIDATE_EMAIL)) {
-            throw new InvalidArgumentException('Email is not valid');
-        }
+        Assert::notEmpty($value);
+        Assert::email($value);
 
         mb_strtolower($this->value);
     }

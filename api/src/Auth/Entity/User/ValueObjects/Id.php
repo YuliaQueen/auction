@@ -2,8 +2,8 @@
 
 namespace App\Auth\Entity\User\ValueObjects;
 
-use DomainException;
 use Ramsey\Uuid\Uuid;
+use Webmozart\Assert\Assert;
 
 readonly class Id
 {
@@ -11,9 +11,7 @@ readonly class Id
         private string $value,
     )
     {
-        if (empty($this->value)) {
-            throw new DomainException("Id can't be empty");
-        }
+        Assert::uuid($value);
 
         mb_strtolower($this->value);
     }

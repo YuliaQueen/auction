@@ -2,13 +2,21 @@
 
 namespace App\Auth\Services;
 
+use DateInterval;
 use DateTimeImmutable;
 use App\Auth\Entity\User\ValueObjects\Token;
+use Ramsey\Uuid\Uuid;
 
 class Tokenizer
 {
-    public function generate(DateTimeImmutable $now): Token
+    public function __construct(
+        private DateInterval $interval,
+    )
     {
-        return new Token('');
+    }
+
+    public function generate(DateTimeImmutable $expiresAt): Token
+    {
+        return new Token(Uuid::uuid4()->toString(), $expiresAt->add($this->interval));
     }
 }

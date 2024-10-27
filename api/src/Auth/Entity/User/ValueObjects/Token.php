@@ -2,17 +2,22 @@
 
 namespace App\Auth\Entity\User\ValueObjects;
 
-use InvalidArgumentException;
+use DateTimeImmutable;
+use Webmozart\Assert\Assert;
 
 class Token
 {
     public function __construct(
-        private string $value
+        private string $value,
+        private ?DateTimeImmutable $expiresAt = null,
     )
     {
-        if (empty($this->value)) {
-            throw new InvalidArgumentException('Token cannot be empty');
-        }
+        Assert::notEmpty($this->value);
+    }
+
+    public function getExpiresAt(): DateTimeImmutable
+    {
+        return $this->expiresAt;
     }
 
     public function getValue(): string

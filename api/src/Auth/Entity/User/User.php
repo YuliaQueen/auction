@@ -19,7 +19,7 @@ readonly class User
     {
     }
 
-    public function getId(): ?int
+    public function getId(): ?string
     {
         return $this->id->getValue();
     }
@@ -27,5 +27,20 @@ readonly class User
     public function getEmail(): string
     {
         return $this->email->getValue();
+    }
+
+    public function getHash(): string
+    {
+        return $this->hash;
+    }
+
+    public function getToken(): Token
+    {
+        return $this->token;
+    }
+
+    public function getCreatedAt(): DateTimeImmutable
+    {
+        return $this->createdAt;
     }
 }
