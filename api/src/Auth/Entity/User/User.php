@@ -2,21 +2,39 @@
 
 namespace App\Auth\Entity\User;
 
+use App\Auth\Entity\User\ValueObjects\Status;
 use DateTimeImmutable;
 use App\Auth\Entity\User\ValueObjects\Id;
 use App\Auth\Entity\User\ValueObjects\Email;
 use App\Auth\Entity\User\ValueObjects\Token;
 
-readonly class User
+class User
 {
     public function __construct(
         private Id                $id,
         private Email             $email,
         private string            $hash,
-        private Token             $token,
+        private ?Token            $joinConfirmToken,
         private DateTimeImmutable $createdAt,
+        private ?Status           $status = null,
     )
     {
+        $this->status = $status ?? Status::wait();
+    }
+
+    public function isWait(): bool
+    {
+        return $this->status->isWait();
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status->isActive();
+    }
+
+    public function getStatus(): Status
+    {
+        return $this->status;
     }
 
     public function getId(): ?string
@@ -34,13 +52,29 @@ readonly class User
         return $this->hash;
     }
 
-    public function getToken(): Token
+    public function getJoinConfirmToken(): Token
     {
-        return $this->token;
+        return $this->joinConfirmToken;
     }
 
     public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    /**
+     * @param string $token
+     * @param DateTimeImmutable $confirmationDateTime
+     * @return void
+     */
+    public function confirmJoin(string $token, DateTimeImmutable $confirmationDateTime): void
+    {
+        if ($this->joinConfirmToken === null) {
+            throw new \DomainException('Confirm token is not set.');
+        }
+
+        $this->joinConfirmToken->validate($token, $confirmationDateTime);
+        $this->status = Status::active();
+        $this->joinConfirmToken = null;
     }
 }

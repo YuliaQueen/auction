@@ -13,7 +13,6 @@ use Ramsey\Uuid\Uuid;
 
 class UserTest extends TestCase
 {
-
     public function testCreate()
     {
         $user = new User(
@@ -27,7 +26,17 @@ class UserTest extends TestCase
         Assert::assertEquals($id->getValue(), $user->getId());
         Assert::assertEquals($email->getValue(), $user->getEmail());
         Assert::assertEquals($hash, $user->getHash());
-        Assert::assertEquals($token, $user->getToken());
+        Assert::assertEquals($token, $user->getJoinConfirmToken());
         Assert::assertEquals($date, $user->getCreatedAt());
+        Assert::assertTrue($user->isWait());
+        Assert::assertFalse($user->isActive());
+    }
+
+    /**
+     * @doesNotPerformAssertions
+     */
+    public function testConfirmJoinSuccess()
+    {
+        // TODO create test
     }
 }

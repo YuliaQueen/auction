@@ -34,7 +34,7 @@ readonly class Handler
             id: Id::generate(),
             email: $email,
             hash: $this->passwordHasher->hash($command->password),
-            token: $token,
+            joinConfirmToken: $token,
             createdAt: $now
         );
 
